@@ -12,6 +12,9 @@ extern "C" {
     #include "can2040.h"
 }
 
+//from pb
+#define STB 19
+
 struct repeating_timer t;
 struct repeating_timer throttle_watchdog;
 
@@ -51,6 +54,15 @@ uint32_t header2id(sCAN_Header header) {
 static struct can2040 cbus;
 static struct can2040_msg msg;
 
+//from pb
+static volatile bool samplefresh = false;
+static double sample = 0.0;
+static bool ready_to_drive = false;
+
+//from pb
+bool bready_to_drive(void) {
+    return ready_to_drive;
+}
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg) {
     sCAN_Header header = parse_id(msg->id);
@@ -58,10 +70,17 @@ static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *
         case CAN2040_NOTIFY_TX: 
             break;
         case CAN2040_NOTIFY_RX: 
-            if(header.direction == FROM && header.module == PEDAL_BOX) {
-                // pet the watchdog
-                throttle_watchdog_reset();
+           
+            //from pb
+            if(!ready_to_drive) {
+                sCAN_Header header = parse_id(msg->id);
+                if(header.direction == FROM && header.module == BROADCAST) {
+                    ready_to_drive = true;
+                }
             }
+            //brought it out of the if statment bc this is now on the
+            //pbb so no need to wait on pbb message
+            throttle_watchdog_reset();
             break;
     }
 }
@@ -78,6 +97,10 @@ void can_init(void) {
     uint32_t gpio_tx = CAN_TX;
     uint32_t gpio_rx = CAN_RX;
 
+    gpio_init(STB);
+    gpio_set_dir(STB, GPIO_OUT);
+    gpio_put(STB, 0);
+
     can2040_setup(&cbus, pio_num);
     can2040_callback_config(&cbus, can2040_cb);
 
@@ -86,6 +109,22 @@ void can_init(void) {
     irq_set_enabled(PIO0_IRQ_0, true);
 
     can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);
+}
+
+//from pb
+bool can_tx_adc_taps(uint16_t taps) {
+    sCAN_Header header = {
+        .priority = 0,
+        .module = PEDAL_BOX,
+        .direction = FROM,
+        .command = 3, // throttle command
+    };
+    uint32_t id = header2id(header);
+    msg.id = id;
+    msg.dlc = 2;
+    msg.data[0] = taps & 0xFF;
+    msg.data[1] = (taps >> 8) & 0xFF;
+    return can2040_transmit(&cbus, &msg);
 }
 
 static const sCAN_Header rtd_header = {

@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-#define CAN_TX 27
-#define CAN_RX 26
+#define CAN_TX 3
+#define CAN_RX 4
 #define ONE_MEG 1000000
 #define RP2350_SYS_CLK 150000000
 #define RP2040_SYS_CLK 125000000
@@ -40,5 +40,9 @@ void rtd_disable_heartbeat(void);
 
 void throttle_watchdog_set();
 void throttle_watchdog_reset();
+
+//from pb
+bool bready_to_drive(void);
+bool can_tx_adc_taps(uint16_t taps);
 
 #endif
