@@ -17,8 +17,9 @@ extern "C" {
 
 
 
-#define RTD_BUTTON 7
-#define RTD_SPEAKER 0
+#define RTD_BUTTON 21
+#define RTD_SRC 22
+//#define RTD_SPEAKER 0
 #define USER_LED 25
 
 // GPIO6
@@ -74,11 +75,11 @@ void pedal_enable_callback(struct repeating_timer *t) {
     add_repeating_timer_ms(10, can_tx_timer_callback, NULL, t);
 }
 
-void tune_throttle(uint16_t *min, uint16_t *max) {
+void tune_throttle(uint16_t *min, uint16_t *max, bool pressed) {
     
     uint16_t min_t = 4095;
     uint16_t max_t = 0;
-    while (!bready_to_drive()) {
+    if(!pressed) {
         adc_select_input(0);
         uint16_t pot0_taps = adc_read();
 
@@ -100,8 +101,8 @@ void rtd_init(void) {
     gpio_pull_down(RTD_BUTTON);
     gpio_set_dir(RTD_BUTTON, GPIO_IN);
     
-    gpio_init(RTD_SPEAKER);
-    gpio_set_dir(RTD_SPEAKER, GPIO_OUT);
+    //gpio_init(RTD_SPEAKER);
+    //gpio_set_dir(RTD_SPEAKER, GPIO_OUT);
 
     gpio_init(DRIVE_RELAY);
     gpio_set_dir(DRIVE_RELAY, GPIO_OUT);
@@ -111,13 +112,14 @@ void rtd_init(void) {
     gpio_set_dir(USER_LED, GPIO_OUT);
     gpio_put(USER_LED, 1);
 
+
     can_init();
 }
 
 void rtd_speaker_sequence() {
-    gpio_put(RTD_SPEAKER, 1);
+   // gpio_put(RTD_SPEAKER, 1);
     sleep_ms(2000);
-    gpio_put(RTD_SPEAKER, 0);
+    //gpio_put(RTD_SPEAKER, 0);
     gpio_put(DRIVE_RELAY, DRIVE_RELAY_CLOSED);
 }
 
@@ -133,10 +135,18 @@ int main() {
     gpio_init(SSOK);
     gpio_set_dir(SSOK, GPIO_IN);
 
+    gpio_init(RTD_BUTTON);
+    gpio_init(RTD_SRC);
+    gpio_set_dir(RTD_BUTTON, GPIO_IN);
+    gpio_set_dir(RTD_SRC, GPIO_OUT);
+    gpio_put(RTD_SRC, 1);
+
     rtd_init();
+    pedal_init();
 
     bool pressed = false;
     while(!pressed) {
+        tune_throttle(&min, &max, pressed);
         if(gpio_get(RTD_BUTTON)) {
             sleep_ms(5);
             if(gpio_get(RTD_BUTTON)) {
@@ -151,6 +161,9 @@ int main() {
 
     sleep_ms(500);
     throttle_watchdog_set();
+
+    static struct repeating_timer can_tx_timer;
+    add_repeating_timer_ms(10, can_tx_timer_callback, NULL, &can_tx_timer);
 
 
     while (true) {
