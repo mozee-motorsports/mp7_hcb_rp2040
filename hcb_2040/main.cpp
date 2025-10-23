@@ -76,7 +76,7 @@ void pedal_enable_callback(struct repeating_timer *t) {
 }
 
 void tune_throttle(uint16_t *min, uint16_t *max, bool pressed) {
-    
+    printf("tuning\n");
     uint16_t min_t = 4095;
     uint16_t max_t = 0;
     if(!pressed) {
@@ -154,6 +154,7 @@ int main() {
             }
         }
     }
+    printf("done tuning\n");
     rtd_speaker_sequence();
     rtd_enable_heartbeat();
 

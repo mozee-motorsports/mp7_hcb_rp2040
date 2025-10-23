@@ -15,13 +15,13 @@ extern "C" {
 //from pb
 #define STB 19
 
-struct repeating_timer t;
+//struct repeating_timer t;
+struct repeating_timer rtd_timer;
 struct repeating_timer throttle_watchdog;
 
-bool throttle_watchdog_callback() {
-    cancel_repeating_timer(&throttle_watchdog);
-    cancel_repeating_timer(&t); // stop ready-to-drive
-    return 0; // stop the repeating timer
+bool throttle_watchdog_callback(struct repeating_timer *rt) {
+    printf("throttle watchdog stopped\n");
+    return false; // stop the repeating timer
 }
 
 void throttle_watchdog_reset() {
@@ -92,7 +92,7 @@ static void PIOx_IRQHandler(void) {
 void can_init(void) {
 
     uint32_t pio_num = 0;
-    uint32_t sys_clock = RP2350_SYS_CLK;
+    uint32_t sys_clock = RP2040_SYS_CLK;
     uint32_t bitrate = ONE_MEG;
     uint32_t gpio_tx = CAN_TX;
     uint32_t gpio_rx = CAN_RX;
@@ -135,6 +135,7 @@ static const sCAN_Header rtd_header = {
 };
 
 static bool rtd_heartbeat(__unused struct repeating_timer *t) {
+    printf("heartbeat\n");
     gpio_xor_mask(1 << 25);
     msg.id = header2id(rtd_header);
     msg.dlc = 0;
@@ -143,9 +144,9 @@ static bool rtd_heartbeat(__unused struct repeating_timer *t) {
 }
 
 void rtd_enable_heartbeat() {
-    add_repeating_timer_ms(500, (repeating_timer_callback_t)rtd_heartbeat, NULL, &t);
+    add_repeating_timer_ms(500, (repeating_timer_callback_t)rtd_heartbeat, NULL, &rtd_timer);
 }
 
 void rtd_disable_heartbeat() {
-    cancel_repeating_timer(&t);
+    cancel_repeating_timer(&rtd_timer);
 }
