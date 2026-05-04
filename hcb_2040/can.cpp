@@ -16,6 +16,7 @@ struct repeating_timer t;
 struct repeating_timer throttle_watchdog;
 
 bool throttle_watchdog_callback() {
+    printf("throttle wd\n");
     cancel_repeating_timer(&throttle_watchdog);
     cancel_repeating_timer(&t); // stop ready-to-drive
     return 0; // stop the repeating timer
@@ -53,6 +54,7 @@ static struct can2040_msg msg;
 
 
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg) {
+    printf("can cb\n");
     sCAN_Header header = parse_id(msg->id);
     switch (notify) {
         case CAN2040_NOTIFY_TX: 
@@ -96,6 +98,7 @@ static const sCAN_Header rtd_header = {
 };
 
 static bool rtd_heartbeat(__unused struct repeating_timer *t) {
+    printf("hb\n");
     gpio_xor_mask(1 << 25);
     msg.id = header2id(rtd_header);
     msg.dlc = 0;

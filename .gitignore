@@ -1,0 +1,4 @@
+.clangd
+.vscode/
+build/
+hcb_2040/.cache/
